@@ -1,0 +1,26 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - MAIL_FROM=Action for Happiness <hello@actionforhappiness.local>
+      - APP_URL=http://localhost:3000
+      - DATA_DIR=/app/data
+    volumes:
+      - app-data:/app/data
+    depends_on:
+      - mailpit
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    environment:
+      - MP_MAX_MESSAGES=500
+
+volumes:
+  app-data:
