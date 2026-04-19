@@ -4,15 +4,18 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - SMTP_HOST=mailpit
-      - SMTP_PORT=1025
-      - MAIL_FROM=Action for Happiness <hello@actionforhappiness.local>
-      - APP_URL=http://localhost:3000
-      - DATA_DIR=/app/data
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      MAIL_FROM: "Action for Happiness <hello@actionforhappiness.local>"
+      APP_URL: "http://localhost:3000"
+      DATA_DIR: /app/data
+      NODE_ENV: production
     volumes:
       - app-data:/app/data
     depends_on:
-      - mailpit
+      mailpit:
+        condition: service_healthy
+    restart: unless-stopped
 
   mailpit:
     image: axllent/mailpit:latest
@@ -20,7 +23,14 @@ services:
       - "1025:1025"  # SMTP
       - "8025:8025"  # Web UI
     environment:
-      - MP_MAX_MESSAGES=500
+      MP_MAX_MESSAGES: "500"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+      start_period: 3s
+    restart: unless-stopped
 
 volumes:
   app-data:
