@@ -1,6 +1,18 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import {
+  ArrowLeft,
+  Compass,
+  Feather,
+  HeartHandshake,
+  Loader2,
+  Quote as QuoteIcon,
+  Sparkles,
+  Sprout,
+  Sun,
+  Wind,
+} from 'lucide-react';
 
 type Step = 'breathe' | 'reflect' | 'gratitude' | 'intention' | 'complete';
 const STEPS: Step[] = ['breathe', 'reflect', 'gratitude', 'intention'];
@@ -10,6 +22,9 @@ type CompletionData = {
   recentGratitudes: string[];
   affirmation: string;
   name: string | null;
+  quote: { text: string; author: string };
+  action: string;
+  evidence: { text: string; source: string };
 };
 
 export default function CheckinFlow({
@@ -51,14 +66,15 @@ export default function CheckinFlow({
       });
       const data = await res.json();
       if (!res.ok) {
-        // If someone already completed this check-in (e.g. second tab),
-        // jump to a gentle completion screen rather than showing a red error.
         if (res.status === 409) {
           setCompletion({
             streak: 0,
             recentGratitudes: [],
             affirmation: 'This one is already saved. See you tomorrow.',
             name,
+            quote: { text: 'Happiness is the path.', author: 'Thich Nhat Hanh' },
+            action: 'Notice three good things about today — however small.',
+            evidence: { text: '', source: '' },
           });
           setStep('complete');
           return;
@@ -70,6 +86,9 @@ export default function CheckinFlow({
         recentGratitudes: data.recentGratitudes ?? [],
         affirmation: data.affirmation ?? 'See you tomorrow.',
         name: data.name ?? name,
+        quote: data.quote,
+        action: data.action,
+        evidence: data.evidence,
       });
       setStep('complete');
     } catch (err) {
@@ -89,6 +108,9 @@ export default function CheckinFlow({
         {step === 'reflect' && (
           <Prompt
             key="reflect"
+            icon={<Feather aria-hidden className="w-4 h-4" strokeWidth={1.75} />}
+            keyName="Awareness"
+            keyBlurb="Live life mindfully"
             title={name ? `How are you, ${name}?` : 'How are you feeling, right now?'}
             subtitle="There's no right answer. Just notice, without judgement."
             placeholder="Today I'm feeling…"
@@ -102,6 +124,9 @@ export default function CheckinFlow({
         {step === 'gratitude' && (
           <Prompt
             key="gratitude"
+            icon={<HeartHandshake aria-hidden className="w-4 h-4" strokeWidth={1.75} />}
+            keyName="Emotions"
+            keyBlurb="Look for what’s good"
             title="What's one thing you're grateful for today?"
             subtitle="However small. A warm drink, a kind word, a quiet moment."
             placeholder="I'm grateful for…"
@@ -115,6 +140,9 @@ export default function CheckinFlow({
         {step === 'intention' && (
           <Prompt
             key="intention"
+            icon={<Compass aria-hidden className="w-4 h-4" strokeWidth={1.75} />}
+            keyName="Direction"
+            keyBlurb="Have goals to look forward to"
             title="What's one positive thing you'd like to do today?"
             subtitle="One small step forward. Kindness, a walk, a message to a friend."
             placeholder="Today I will…"
@@ -150,9 +178,7 @@ function Progress({ current, total }: { current: number; total: number }) {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Breathing step — 4-7-8, JS-driven state machine                     */
-/* ------------------------------------------------------------------ */
+/* Breathing --------------------------------------------------------- */
 
 type Phase = 'in' | 'hold' | 'out';
 const PHASE_MS: Record<Phase, number> = { in: 4000, hold: 7000, out: 8000 };
@@ -163,10 +189,14 @@ const TOTAL_CYCLES = 2;
 function Breathe({ onNext }: { onNext: () => void }) {
   const reduceMotion = usePrefersReducedMotion();
 
-  // Static variant for users who asked for less motion.
   if (reduceMotion) {
     return (
       <div className="bg-white/70 backdrop-blur rounded-2xl p-10 text-center shadow-sm fadein">
+        <KeyPill
+          icon={<Wind aria-hidden className="w-4 h-4" strokeWidth={1.75} />}
+          name="Awareness"
+          blurb="Live life mindfully"
+        />
         <h1 className="font-serif text-4xl text-warm-900 mb-3 tracking-tight">Take a few deep breaths.</h1>
         <p className="text-warm-700 leading-relaxed mb-8 max-w-sm mx-auto">
           Let your shoulders drop. When you're ready, try the 4-7-8 pattern:
@@ -223,11 +253,15 @@ function BreatheAnimated({ onNext }: { onNext: () => void }) {
     return () => clearTimeout(t);
   }, [phase, cycle, done]);
 
-  const phaseClass =
-    phase === 'in' ? 'breathe-in' : phase === 'hold' ? 'breathe-hold' : 'breathe-out';
+  const phaseClass = phase === 'in' ? 'breathe-in' : phase === 'hold' ? 'breathe-hold' : 'breathe-out';
 
   return (
     <div className="bg-white/70 backdrop-blur rounded-2xl p-8 md:p-10 text-center shadow-sm fadein">
+      <KeyPill
+        icon={<Wind aria-hidden className="w-4 h-4" strokeWidth={1.75} />}
+        name="Awareness"
+        blurb="Live life mindfully"
+      />
       <h1 className="font-serif text-4xl text-warm-900 mb-2 tracking-tight">Take a few deep breaths.</h1>
       <p className="text-warm-700 mb-10">Let your shoulders drop. Follow the circle.</p>
 
@@ -248,9 +282,7 @@ function BreatheAnimated({ onNext }: { onNext: () => void }) {
       <button
         onClick={onNext}
         className={`rounded-full font-medium px-8 py-3 transition-all ${
-          done
-            ? 'bg-warm-500 hover:bg-warm-700 text-white'
-            : 'bg-warm-100 hover:bg-warm-200 text-warm-900'
+          done ? 'bg-warm-500 hover:bg-warm-700 text-white' : 'bg-warm-100 hover:bg-warm-200 text-warm-900'
         }`}
       >
         Continue
@@ -269,11 +301,12 @@ function BreatheAnimated({ onNext }: { onNext: () => void }) {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Prompt step                                                         */
-/* ------------------------------------------------------------------ */
+/* Prompt ------------------------------------------------------------ */
 
 function Prompt({
+  icon,
+  keyName,
+  keyBlurb,
   title,
   subtitle,
   placeholder,
@@ -286,6 +319,9 @@ function Prompt({
   loading,
   error,
 }: {
+  icon: React.ReactNode;
+  keyName: string;
+  keyBlurb: string;
   title: string;
   subtitle: string;
   placeholder: string;
@@ -305,6 +341,7 @@ function Prompt({
 
   return (
     <div className="bg-white/70 backdrop-blur rounded-2xl p-8 md:p-10 shadow-sm fadein">
+      <KeyPill icon={icon} name={keyName} blurb={keyBlurb} />
       <h1 className="font-serif text-[32px] md:text-4xl text-warm-900 mb-2 leading-tight tracking-tight">{title}</h1>
       <p className="text-warm-700 mb-6">{subtitle}</p>
 
@@ -334,9 +371,10 @@ function Prompt({
             type="button"
             onClick={onBack}
             disabled={disabled}
-            className="text-sm text-warm-700/80 hover:text-warm-900 transition-colors disabled:opacity-40"
+            className="text-sm text-warm-700/80 hover:text-warm-900 transition-colors disabled:opacity-40 inline-flex items-center gap-1.5"
           >
-            ← Back
+            <ArrowLeft className="w-4 h-4" strokeWidth={1.75} />
+            Back
           </button>
         ) : (
           <span />
@@ -348,12 +386,7 @@ function Prompt({
           disabled={disabled}
           className="rounded-full bg-warm-500 hover:bg-warm-700 transition-colors text-white font-medium px-8 py-3 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
         >
-          {loading && (
-            <span
-              aria-hidden
-              className="inline-block w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin"
-            />
-          )}
+          {loading && <Loader2 aria-hidden className="w-4 h-4 animate-spin" />}
           {ctaLabel}
         </button>
       </div>
@@ -361,51 +394,153 @@ function Prompt({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Completion screen                                                   */
-/* ------------------------------------------------------------------ */
+/* Key pill ---------------------------------------------------------- */
+
+function KeyPill({ icon, name, blurb }: { icon: React.ReactNode; name: string; blurb: string }) {
+  return (
+    <div className="inline-flex items-center gap-2 mb-5 rounded-full bg-warm-100/80 border border-warm-200 px-3 py-1.5 text-warm-700">
+      <span className="text-warm-700">{icon}</span>
+      <span className="text-[11px] uppercase tracking-[0.18em] font-medium text-warm-700">
+        {name}
+      </span>
+      <span className="text-[11px] text-warm-700/70 hidden sm:inline">· {blurb}</span>
+    </div>
+  );
+}
+
+/* Completion dashboard --------------------------------------------- */
 
 function Completion({ data }: { data: CompletionData }) {
-  const { streak, recentGratitudes, affirmation, name } = data;
+  const { streak, recentGratitudes, affirmation, name, quote, action, evidence } = data;
   const firstTime = streak <= 1;
   return (
-    <div className="bg-white/70 backdrop-blur rounded-2xl p-10 text-center shadow-sm fadein">
-      <div className="text-6xl mb-4" aria-hidden>🌞</div>
-      <h1 className="font-serif text-4xl text-warm-900 mb-3 tracking-tight">
-        {name ? `Thank you, ${name}.` : 'Thank you for checking in.'}
-      </h1>
-
-      <p className="text-warm-700 leading-relaxed max-w-sm mx-auto">{affirmation}</p>
-
-      <div className="mt-8 rounded-xl bg-warm-50/80 border border-warm-200 px-5 py-4 text-warm-900 inline-block">
-        {firstTime ? (
-          <span className="font-serif text-lg">🌱 Your first check-in. A lovely start.</span>
-        ) : (
-          <span className="font-serif text-lg">
-            🌱 You've checked in <span className="font-semibold">{streak} days in a row</span>.
-          </span>
-        )}
+    <div className="space-y-5 fadein">
+      {/* Hero */}
+      <div className="bg-white/70 backdrop-blur rounded-2xl p-10 text-center shadow-sm">
+        <Sun aria-hidden className="w-10 h-10 mx-auto mb-4 text-warm-500" strokeWidth={1.5} />
+        <h1 className="font-serif text-4xl text-warm-900 mb-3 tracking-tight">
+          {name ? `Thank you, ${name}.` : 'Thank you for checking in.'}
+        </h1>
+        <p className="text-warm-700 leading-relaxed max-w-sm mx-auto">{affirmation}</p>
       </div>
 
+      {/* Streak dots */}
+      <div className="bg-white/70 backdrop-blur rounded-2xl px-6 py-5 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 text-warm-900">
+            <Sprout aria-hidden className="w-5 h-5 text-warm-500" strokeWidth={1.75} />
+            <span className="font-serif text-lg">
+              {firstTime ? 'Your first check-in — a lovely start.' : (
+                <>You've checked in <span className="font-semibold">{streak} days in a row</span>.</>
+              )}
+            </span>
+          </div>
+          <StreakDots streak={Math.min(streak, 7)} />
+        </div>
+      </div>
+
+      {/* Today's invitation */}
+      {action && (
+        <div className="bg-white/70 backdrop-blur rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center gap-2 text-warm-700 mb-2">
+            <Sparkles aria-hidden className="w-4 h-4" strokeWidth={1.75} />
+            <span className="text-[11px] uppercase tracking-[0.22em] font-medium">Today's invitation</span>
+          </div>
+          <p className="text-warm-900 leading-relaxed">{action}</p>
+          <p className="mt-2 text-xs text-warm-700/70">
+            From the{' '}
+            <a
+              className="underline decoration-warm-300 hover:decoration-warm-500"
+              href="https://actionforhappiness.org/calendar"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Action for Happiness monthly calendar
+            </a>
+            .
+          </p>
+        </div>
+      )}
+
+      {/* Quote */}
+      {quote?.text && (
+        <div className="bg-white/70 backdrop-blur rounded-2xl p-6 shadow-sm">
+          <div className="flex items-start gap-3">
+            <QuoteIcon aria-hidden className="w-5 h-5 text-warm-300 shrink-0 mt-1" strokeWidth={1.5} />
+            <div>
+              <p className="font-serif italic text-lg leading-relaxed text-warm-900">“{quote.text}”</p>
+              <p className="mt-2 text-sm text-warm-700">— {quote.author}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recent gratitudes */}
       {recentGratitudes.length > 1 && (
-        <div className="mt-8 text-left max-w-sm mx-auto">
-          <p className="text-xs uppercase tracking-[0.22em] text-warm-700/80 mb-3">This week you've been grateful for</p>
+        <div className="bg-white/70 backdrop-blur rounded-2xl p-6 shadow-sm">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-warm-700 mb-3">
+            This week you've been grateful for
+          </p>
           <ul className="space-y-2">
             {recentGratitudes.slice(0, 3).map((g, i) => (
-              <li key={i} className="text-warm-900 text-sm leading-relaxed italic before:content-['“'] after:content-['”']">
+              <li
+                key={i}
+                className="text-warm-900 text-sm leading-relaxed italic before:content-['“'] after:content-['”']"
+              >
                 {g.length > 140 ? g.slice(0, 137) + '…' : g}
               </li>
             ))}
           </ul>
         </div>
       )}
+
+      {/* Evidence */}
+      {evidence?.text && (
+        <div className="rounded-2xl px-5 py-4 border border-warm-200 bg-warm-50/60">
+          <p className="text-xs text-warm-700 leading-relaxed">
+            <span className="font-medium text-warm-900">Why this works:</span> {evidence.text}
+            <span className="text-warm-700/70"> — {evidence.source}</span>
+          </p>
+        </div>
+      )}
+
+      {/* Footer tagline + resources */}
+      <div className="pt-2 text-center">
+        <p className="text-[11px] tracking-[0.22em] uppercase text-warm-700/70 mb-3">
+          Happier &middot; Kinder &middot; Together
+        </p>
+        <div className="text-xs text-warm-700/80 space-x-3">
+          <a className="underline decoration-warm-300 hover:decoration-warm-500" href="https://actionforhappiness.org/10-keys-to-happier-living" target="_blank" rel="noreferrer">
+            10 Keys to Happier Living
+          </a>
+          <span>·</span>
+          <a className="underline decoration-warm-300 hover:decoration-warm-500" href="https://actionforhappiness.org/10-days" target="_blank" rel="noreferrer">
+            10 Days of Happiness
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Hooks                                                               */
-/* ------------------------------------------------------------------ */
+function StreakDots({ streak }: { streak: number }) {
+  return (
+    <div className="flex items-center gap-1.5" aria-label={`${streak} of last 7 days`}>
+      {Array.from({ length: 7 }).map((_, i) => {
+        const filled = i < streak;
+        return (
+          <span
+            key={i}
+            className={`w-2 h-2 rounded-full ${filled ? 'bg-warm-500' : 'bg-warm-200'}`}
+            aria-hidden
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/* Hooks ------------------------------------------------------------- */
 
 function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(false);

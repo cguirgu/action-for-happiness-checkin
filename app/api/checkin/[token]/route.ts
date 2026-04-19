@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import db, { getCheckinByToken, getStreak, getUserCheckinHistory } from '@/lib/db';
 import { CheckinSchema, fieldErrors } from '@/lib/validation';
 import { affirmationFor } from '@/lib/affirmations';
+import { quoteForToday, actionForToday, evidenceForToday } from '@/lib/content';
 
 export const runtime = 'nodejs';
 
@@ -43,7 +44,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
      WHERE token = ?`
   ).run(reflect, gratitude, intention, token);
 
-  // Gather data for the completion screen so the client doesn't need a second round-trip.
   const streak = getStreak(row.user_id);
   const history = getUserCheckinHistory(row.user_id, 3)
     .map((c) => (c.gratitude || '').trim())
@@ -56,5 +56,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     recentGratitudes: history,
     affirmation,
     name: row.user_name,
+    quote: quoteForToday(),
+    action: actionForToday(),
+    evidence: evidenceForToday(),
   });
 }

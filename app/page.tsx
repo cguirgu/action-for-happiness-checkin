@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Leaf, Loader2 } from 'lucide-react';
 
 type FormState = 'idle' | 'loading' | 'ok' | 'error';
 
@@ -43,7 +44,7 @@ export default function Home() {
       <main className="min-h-screen flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-xl fadein">
           <div className="bg-white/70 backdrop-blur rounded-2xl p-10 text-center shadow-sm">
-            <div className="text-5xl mb-4" aria-hidden>🌿</div>
+            <Leaf aria-hidden className="w-10 h-10 mx-auto mb-4 text-warm-500" strokeWidth={1.5} />
             <h2 className="font-serif text-3xl text-warm-900 mb-3">
               {serverName ? `You're all set, ${serverName}.` : `You're all set.`}
             </h2>
@@ -58,6 +59,9 @@ export default function Home() {
               to view it.
             </p>
           </div>
+          <p className="mt-6 text-center text-xs tracking-[0.22em] uppercase text-warm-700/70">
+            Happier &middot; Kinder &middot; Together
+          </p>
         </div>
       </main>
     );
@@ -132,12 +136,7 @@ export default function Home() {
             disabled={loading}
             className="mt-6 w-full rounded-full bg-warm-500 hover:bg-warm-700 transition-colors text-white font-medium py-3.5 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
           >
-            {loading && (
-              <span
-                aria-hidden
-                className="inline-block w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin"
-              />
-            )}
+            {loading && <Loader2 aria-hidden className="w-4 h-4 animate-spin" />}
             {loading ? 'Sending your first check-in…' : 'Send me my first check-in'}
           </button>
 
@@ -155,6 +154,10 @@ export default function Home() {
             Takes about 2 minutes · Your responses stay private
           </p>
         </form>
+
+        <p className="mt-8 text-center text-[11px] tracking-[0.22em] uppercase text-warm-700/70">
+          Happier &middot; Kinder &middot; Together
+        </p>
       </div>
     </main>
   );
