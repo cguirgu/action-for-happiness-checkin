@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
-import { upsertUser, createCheckinToken, deleteCheckinToken } from '@/lib/db';
+import { getUserByEmail, upsertUser, createCheckinToken, deleteCheckinToken } from '@/lib/db';
 import { sendCheckinEmail } from '@/lib/mail';
-import { SignupSchema, fieldErrors } from '@/lib/validation';
+import { ResendSchema, fieldErrors } from '@/lib/validation';
 import { checkRate, clientKey } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
+/**
+ * Issue a new check-in link. Used by the "your link rested" recovery screen.
+ * Intentionally returns the same success shape whether or not the email is
+ * already known — don't leak which addresses have accounts.
+ */
 export async function POST(req: NextRequest) {
   let body: unknown;
   try {
@@ -15,40 +20,38 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
   }
 
-  const parsed = SignupSchema.safeParse(body);
+  const parsed = ResendSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Please check the form below.', fieldErrors: fieldErrors(parsed.error) },
+      { error: 'Please check your email address.', fieldErrors: fieldErrors(parsed.error) },
       { status: 400 }
     );
   }
 
-  const { email, name } = parsed.data;
-
-  const rate = checkRate(`signup:${clientKey(req)}`);
+  const rate = checkRate(`resend:${clientKey(req)}`);
   if (!rate.allowed) {
     const minutes = Math.ceil(rate.retryAfterSeconds / 60);
     return NextResponse.json(
-      { error: `You've signed up a few times recently. Try again in about ${minutes} minute${minutes === 1 ? '' : 's'}.` },
+      { error: `You've asked a few times recently. Try again in about ${minutes} minute${minutes === 1 ? '' : 's'}.` },
       { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } }
     );
   }
 
-  const user = upsertUser(email, name ?? null);
+  const { email } = parsed.data;
+  const user = getUserByEmail(email) ?? upsertUser(email);
   const token = crypto.randomBytes(24).toString('hex');
   createCheckinToken(user.id, token, 48);
 
   try {
     await sendCheckinEmail(email, token, user.name);
   } catch (err) {
-    console.error('Email send failed:', err);
-    // Roll back the token so the user doesn't end up with an orphan unusable record.
+    console.error('Resend failed:', err);
     deleteCheckinToken(token);
     return NextResponse.json(
-      { error: "We couldn't send your email just now. Mind trying again in a moment?" },
+      { error: "We couldn't send that. Mind trying again in a moment?" },
       { status: 502 }
     );
   }
 
-  return NextResponse.json({ ok: true, name: user.name });
+  return NextResponse.json({ ok: true });
 }

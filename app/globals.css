@@ -2,18 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-from: #fdf8f3;
+  --bg-to: #f9ecdb;
+  --ease-out-quart: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 html, body { height: 100%; }
 
+/* Time-of-day gradient, set on <html data-time>. Palette shifts warm dawn →
+   soft cream midday → dusty rose evening. Kept subtle on purpose — it should
+   register as a mood, not a theme. */
+html[data-time="morning"] { --bg-from: #fef3e7; --bg-to: #f7e4d7; }
+html[data-time="afternoon"] { --bg-from: #fdf8f3; --bg-to: #f9ecdb; }
+html[data-time="evening"] { --bg-from: #f2dfd5; --bg-to: #e5c9b8; }
+
 body {
-  background: linear-gradient(180deg, #fdf8f3 0%, #f9ecdb 100%);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  background: linear-gradient(180deg, var(--bg-from) 0%, var(--bg-to) 100%);
   color: #3b2112;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-@keyframes breathe {
-  0%, 100% { transform: scale(1); opacity: 0.75; }
-  50%      { transform: scale(1.35); opacity: 1; }
+/* Focus rings — warm, not jarring. */
+:focus-visible {
+  outline: 2px solid #d48c52;
+  outline-offset: 2px;
+  border-radius: 6px;
 }
-.breathe-circle { animation: breathe 8s ease-in-out infinite; }
 
-@keyframes fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.fadein { animation: fadein 500ms ease-out both; }
+/* Motion. All animations are gated behind prefers-reduced-motion: no-preference
+   so users who've asked for less motion get a still experience. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fadein {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .fadein { animation: fadein 500ms var(--ease-out-quart) both; }
+
+  @keyframes breathe-in { from { transform: scale(0.85); } to { transform: scale(1.25); } }
+  @keyframes breathe-hold { from { transform: scale(1.25); } to { transform: scale(1.25); } }
+  @keyframes breathe-out { from { transform: scale(1.25); } to { transform: scale(0.85); } }
+
+  .breathe-in   { animation: breathe-in 4s var(--ease-out-quart) both; }
+  .breathe-hold { animation: breathe-hold 7s linear both; }
+  .breathe-out  { animation: breathe-out 8s var(--ease-out-quart) both; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fadein { opacity: 1; transform: none; }
+  .breathe-in, .breathe-hold, .breathe-out { transform: scale(1); animation: none; }
+}
+
+/* Auto-growing textareas. field-sizing has wide support in modern Chromium/Safari;
+   falls back gracefully to fixed rows. */
+textarea.autogrow {
+  field-sizing: content;
+  min-height: 7.5rem;
+}
