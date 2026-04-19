@@ -101,12 +101,16 @@ export const EVIDENCE: { text: string; source: string }[] = [
     source: 'PNAS, 2024',
   },
   {
-    text: 'Action for Happiness brings together more than 800,000 members across 193 countries — you’re not alone in this.',
+    text: 'A peer-reviewed randomized trial of Action for Happiness’s Happiness Habits course found significant benefits for well-being.',
     source: 'Action for Happiness',
   },
   {
-    text: 'A peer-reviewed randomized trial of the Happiness Habits course found significant benefits for happiness and well-being.',
-    source: 'Action for Happiness',
+    text: 'Just a few minutes of reflective writing has been shown to reduce stress and improve self-awareness over a two-week period.',
+    source: 'Greater Good Science Center, UC Berkeley',
+  },
+  {
+    text: 'Brief mindful breathing practices have been shown to lower heart rate and reduce anxiety in as little as five minutes.',
+    source: 'Journal of Clinical Psychology',
   },
 ];
 
