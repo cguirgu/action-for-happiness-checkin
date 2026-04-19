@@ -36,10 +36,17 @@ body {
    so users who've asked for less motion get a still experience. */
 @media (prefers-reduced-motion: no-preference) {
   @keyframes fadein {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: none; }
+    from { opacity: 0; transform: translateY(8px); filter: blur(2px); }
+    to   { opacity: 1; transform: none; filter: blur(0); }
   }
-  .fadein { animation: fadein 500ms var(--ease-out-quart) both; }
+  .fadein { animation: fadein 520ms var(--ease-out-quart) both; }
+
+  /* Step crossfade — the outgoing card drifts up + out before the new one mounts. */
+  @keyframes step-exit {
+    from { opacity: 1; transform: none; }
+    to   { opacity: 0; transform: translateY(-6px); }
+  }
+  .step-exiting { animation: step-exit 220ms var(--ease-out-quart) both; }
 
   @keyframes breathe-in { from { transform: scale(0.85); } to { transform: scale(1.25); } }
   @keyframes breathe-hold { from { transform: scale(1.25); } to { transform: scale(1.25); } }
@@ -48,11 +55,36 @@ body {
   .breathe-in   { animation: breathe-in 4s var(--ease-out-quart) both; }
   .breathe-hold { animation: breathe-hold 7s linear both; }
   .breathe-out  { animation: breathe-out 8s var(--ease-out-quart) both; }
+
+  /* Final submit bloom — a warm circle expands outward, a check mark
+     settles at center, then both fade as the completion screen emerges. */
+  @keyframes bloom-ring {
+    0%   { opacity: 0; transform: scale(0.35); }
+    20%  { opacity: 0.9; }
+    70%  { opacity: 0.55; transform: scale(1.8); }
+    100% { opacity: 0;   transform: scale(2.4); }
+  }
+  @keyframes bloom-core {
+    0%   { opacity: 0; transform: scale(0.5); }
+    30%  { opacity: 1; transform: scale(1); }
+    70%  { opacity: 1; transform: scale(1.04); }
+    100% { opacity: 0; transform: scale(1.1); }
+  }
+  @keyframes bloom-check {
+    0%, 25% { opacity: 0; transform: scale(0.5); }
+    55%     { opacity: 1; transform: scale(1.1); }
+    75%     { opacity: 1; transform: scale(1); }
+    100%    { opacity: 0; transform: scale(1); }
+  }
+  .bloom-ring  { animation: bloom-ring  1400ms var(--ease-out-quart) both; }
+  .bloom-core  { animation: bloom-core  1400ms var(--ease-out-quart) both; }
+  .bloom-check { animation: bloom-check 1400ms var(--ease-out-quart) both; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fadein { opacity: 1; transform: none; }
+  .fadein, .step-exiting { opacity: 1; transform: none; filter: none; animation: none; }
   .breathe-in, .breathe-hold, .breathe-out { transform: scale(1); animation: none; }
+  .bloom-ring, .bloom-core, .bloom-check { animation: none; opacity: 0; }
 }
 
 /* Auto-growing textareas. field-sizing has wide support in modern Chromium/Safari;

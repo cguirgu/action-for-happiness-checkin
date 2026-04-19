@@ -75,7 +75,6 @@ export async function sendCheckinEmail(email: string, token: string, name?: stri
 
   const quote = quoteForToday();
   const action = actionForToday();
-  const evidence = evidenceForToday();
   const icon = headerIcon(tod);
 
   const preheader = `${quote.text.slice(0, 90)}${quote.text.length > 90 ? '…' : ''}`;
@@ -147,15 +146,6 @@ export async function sendCheckinEmail(email: string, token: string, name?: stri
 
             <tr>
               <td style="padding:4px 28px 16px;">
-                <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:12.5px;line-height:1.55;color:#8a5028;">
-                  <strong style="color:#8a5028;font-weight:600;">Why this works:</strong> ${esc(evidence.text)}
-                  <span style="color:#a87547;"> — ${esc(evidence.source)}</span>
-                </p>
-              </td>
-            </tr>
-
-            <tr>
-              <td style="padding:0 28px 16px;">
                 <hr style="border:none;border-top:1px solid #f0d4ae;margin:0 0 16px;" />
                 <p style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#8a5028;">Go deeper</p>
                 <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:13.5px;line-height:1.7;color:#3b2112;">
@@ -192,8 +182,6 @@ Today's invitation: ${action}
 
 "${quote.text}"
 — ${quote.author}
-
-Why this works: ${evidence.text} — ${evidence.source}
 
 Go deeper:
  • The 10 Keys to Happier Living — https://actionforhappiness.org/10-keys-to-happier-living

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
+  Check,
   Compass,
   Feather,
   HeartHandshake,
@@ -14,8 +15,10 @@ import {
   Wind,
 } from 'lucide-react';
 
-type Step = 'breathe' | 'reflect' | 'gratitude' | 'intention' | 'complete';
-const STEPS: Step[] = ['breathe', 'reflect', 'gratitude', 'intention'];
+type Step = 'breathe' | 'reflect' | 'gratitude' | 'intention' | 'bloom' | 'complete';
+const USER_STEPS: Step[] = ['breathe', 'reflect', 'gratitude', 'intention'];
+const STEP_EXIT_MS = 220;
+const BLOOM_MS = 1400;
 
 type CompletionData = {
   streak: number;
@@ -24,7 +27,6 @@ type CompletionData = {
   name: string | null;
   quote: { text: string; author: string };
   action: string;
-  evidence: { text: string; source: string };
 };
 
 export default function CheckinFlow({
@@ -41,6 +43,7 @@ export default function CheckinFlow({
   initialIntention: string;
 }) {
   const [step, setStep] = useState<Step>('breathe');
+  const [exiting, setExiting] = useState(false);
   const [reflect, setReflect] = useState(initialReflect);
   const [gratitude, setGratitude] = useState(initialGratitude);
   const [intention, setIntention] = useState(initialIntention);
@@ -48,12 +51,25 @@ export default function CheckinFlow({
   const [error, setError] = useState('');
   const [completion, setCompletion] = useState<CompletionData | null>(null);
 
-  const stepIndex = STEPS.indexOf(step);
-  const goNext = (s: Step) => setStep(s);
-  const goBack = (s: Step) => {
+  const stepIndex = USER_STEPS.indexOf(step);
+  const reduceMotion = usePrefersReducedMotion();
+
+  /**
+   * Move between steps with a brief opacity-out on the outgoing card so the
+   * switch feels considered, not abrupt.
+   */
+  function transitionTo(next: Step) {
     setError('');
-    setStep(s);
-  };
+    if (reduceMotion) {
+      setStep(next);
+      return;
+    }
+    setExiting(true);
+    setTimeout(() => {
+      setStep(next);
+      setExiting(false);
+    }, STEP_EXIT_MS);
+  }
 
   async function submit() {
     setSubmitting(true);
@@ -74,9 +90,8 @@ export default function CheckinFlow({
             name,
             quote: { text: 'Happiness is the path.', author: 'Thich Nhat Hanh' },
             action: 'Notice three good things about today — however small.',
-            evidence: { text: '', source: '' },
           });
-          setStep('complete');
+          goToComplete();
           return;
         }
         throw new Error(data.error || 'Could not save');
@@ -88,76 +103,109 @@ export default function CheckinFlow({
         name: data.name ?? name,
         quote: data.quote,
         action: data.action,
-        evidence: data.evidence,
       });
-      setStep('complete');
+      goToComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save.');
-    } finally {
       setSubmitting(false);
     }
   }
 
+  /** Play the bloom animation, then cross into the completion dashboard. */
+  function goToComplete() {
+    if (reduceMotion) {
+      setStep('complete');
+      setSubmitting(false);
+      return;
+    }
+    setExiting(true);
+    setTimeout(() => {
+      setStep('bloom');
+      setExiting(false);
+      setTimeout(() => {
+        setStep('complete');
+        setSubmitting(false);
+      }, BLOOM_MS);
+    }, STEP_EXIT_MS);
+  }
+
+  const stepWrapperClass = exiting ? 'step-exiting' : 'fadein';
+
   return (
     <main className="min-h-screen flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-xl">
-        {step !== 'complete' && <Progress current={stepIndex} total={STEPS.length} />}
+        {step !== 'complete' && step !== 'bloom' && (
+          <Progress current={stepIndex} total={USER_STEPS.length} />
+        )}
 
-        {step === 'breathe' && <Breathe onNext={() => goNext('reflect')} />}
+        {step === 'breathe' && (
+          <div key="breathe" className={stepWrapperClass}>
+            <Breathe onNext={() => transitionTo('reflect')} reduceMotion={reduceMotion} />
+          </div>
+        )}
 
         {step === 'reflect' && (
-          <Prompt
-            key="reflect"
-            icon={<Feather aria-hidden className="w-4 h-4" strokeWidth={1.75} />}
-            keyName="Awareness"
-            keyBlurb="Live life mindfully"
-            title={name ? `How are you, ${name}?` : 'How are you feeling, right now?'}
-            subtitle="There's no right answer. Just notice, without judgement."
-            placeholder="Today I'm feeling…"
-            value={reflect}
-            onChange={setReflect}
-            onNext={() => goNext('gratitude')}
-            onBack={() => goBack('breathe')}
-          />
+          <div key="reflect" className={stepWrapperClass}>
+            <Prompt
+              icon={<Feather aria-hidden className="w-4 h-4" strokeWidth={1.75} />}
+              keyName="Awareness"
+              keyBlurb="Live life mindfully"
+              title={name ? `How are you, ${name}?` : 'How are you feeling, right now?'}
+              subtitle="There's no right answer. Just notice, without judgement."
+              placeholder="Today I'm feeling…"
+              value={reflect}
+              onChange={setReflect}
+              onNext={() => transitionTo('gratitude')}
+              onBack={() => transitionTo('breathe')}
+            />
+          </div>
         )}
 
         {step === 'gratitude' && (
-          <Prompt
-            key="gratitude"
-            icon={<HeartHandshake aria-hidden className="w-4 h-4" strokeWidth={1.75} />}
-            keyName="Emotions"
-            keyBlurb="Look for what’s good"
-            title="What's one thing you're grateful for today?"
-            subtitle="However small. A warm drink, a kind word, a quiet moment."
-            placeholder="I'm grateful for…"
-            value={gratitude}
-            onChange={setGratitude}
-            onNext={() => goNext('intention')}
-            onBack={() => goBack('reflect')}
-          />
+          <div key="gratitude" className={stepWrapperClass}>
+            <Prompt
+              icon={<HeartHandshake aria-hidden className="w-4 h-4" strokeWidth={1.75} />}
+              keyName="Emotions"
+              keyBlurb="Look for what’s good"
+              title="What's one thing you're grateful for today?"
+              subtitle="However small. A warm drink, a kind word, a quiet moment."
+              placeholder="I'm grateful for…"
+              value={gratitude}
+              onChange={setGratitude}
+              onNext={() => transitionTo('intention')}
+              onBack={() => transitionTo('reflect')}
+            />
+          </div>
         )}
 
         {step === 'intention' && (
-          <Prompt
-            key="intention"
-            icon={<Compass aria-hidden className="w-4 h-4" strokeWidth={1.75} />}
-            keyName="Direction"
-            keyBlurb="Have goals to look forward to"
-            title="What's one positive thing you'd like to do today?"
-            subtitle="One small step forward. Kindness, a walk, a message to a friend."
-            placeholder="Today I will…"
-            value={intention}
-            onChange={setIntention}
-            ctaLabel={submitting ? 'Saving your check-in…' : 'Complete check-in'}
-            onNext={submit}
-            onBack={() => goBack('gratitude')}
-            disabled={submitting}
-            loading={submitting}
-            error={error}
-          />
+          <div key="intention" className={stepWrapperClass}>
+            <Prompt
+              icon={<Compass aria-hidden className="w-4 h-4" strokeWidth={1.75} />}
+              keyName="Direction"
+              keyBlurb="Have goals to look forward to"
+              title="What's one positive thing you'd like to do today?"
+              subtitle="One small step forward. Kindness, a walk, a message to a friend."
+              placeholder="Today I will…"
+              value={intention}
+              onChange={setIntention}
+              ctaLabel={submitting ? 'Saving your check-in…' : 'Complete check-in'}
+              onNext={submit}
+              onBack={() => transitionTo('gratitude')}
+              disabled={submitting}
+              loading={submitting}
+              error={error}
+            />
+          </div>
         )}
 
-        {step === 'complete' && completion && <Completion data={completion} />}
+        {step === 'bloom' && <Bloom />}
+
+        {step === 'complete' && completion && (
+          <div className="fadein">
+            <Completion data={completion} />
+          </div>
+        )}
       </div>
     </main>
   );
@@ -178,6 +226,23 @@ function Progress({ current, total }: { current: number; total: number }) {
   );
 }
 
+/* Bloom — the "you've arrived" moment between submit and dashboard. ----- */
+
+function Bloom() {
+  return (
+    <div className="flex items-center justify-center min-h-[420px]" aria-label="Check-in saved">
+      <div className="relative w-36 h-36 flex items-center justify-center">
+        <div className="bloom-ring absolute inset-0 rounded-full bg-gradient-to-br from-warm-200 to-warm-500" />
+        <div className="bloom-core relative w-28 h-28 rounded-full bg-warm-500 flex items-center justify-center shadow-[0_20px_60px_-16px_rgba(212,140,82,0.55)]">
+          <span className="bloom-check">
+            <Check aria-hidden className="w-12 h-12 text-white" strokeWidth={2.25} />
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* Breathing --------------------------------------------------------- */
 
 type Phase = 'in' | 'hold' | 'out';
@@ -186,12 +251,10 @@ const NEXT_PHASE: Record<Phase, Phase> = { in: 'hold', hold: 'out', out: 'in' };
 const PHASE_LABEL: Record<Phase, string> = { in: 'breathe in', hold: 'hold', out: 'breathe out' };
 const TOTAL_CYCLES = 2;
 
-function Breathe({ onNext }: { onNext: () => void }) {
-  const reduceMotion = usePrefersReducedMotion();
-
+function Breathe({ onNext, reduceMotion }: { onNext: () => void; reduceMotion: boolean }) {
   if (reduceMotion) {
     return (
-      <div className="bg-white/70 backdrop-blur rounded-2xl p-10 text-center shadow-sm fadein">
+      <div className="bg-white/70 backdrop-blur rounded-2xl p-10 text-center shadow-sm">
         <KeyPill
           icon={<Wind aria-hidden className="w-4 h-4" strokeWidth={1.75} />}
           name="Awareness"
@@ -256,7 +319,7 @@ function BreatheAnimated({ onNext }: { onNext: () => void }) {
   const phaseClass = phase === 'in' ? 'breathe-in' : phase === 'hold' ? 'breathe-hold' : 'breathe-out';
 
   return (
-    <div className="bg-white/70 backdrop-blur rounded-2xl p-8 md:p-10 text-center shadow-sm fadein">
+    <div className="bg-white/70 backdrop-blur rounded-2xl p-8 md:p-10 text-center shadow-sm">
       <KeyPill
         icon={<Wind aria-hidden className="w-4 h-4" strokeWidth={1.75} />}
         name="Awareness"
@@ -340,7 +403,7 @@ function Prompt({
   }, []);
 
   return (
-    <div className="bg-white/70 backdrop-blur rounded-2xl p-8 md:p-10 shadow-sm fadein">
+    <div className="bg-white/70 backdrop-blur rounded-2xl p-8 md:p-10 shadow-sm">
       <KeyPill icon={icon} name={keyName} blurb={keyBlurb} />
       <h1 className="font-serif text-[32px] md:text-4xl text-warm-900 mb-2 leading-tight tracking-tight">{title}</h1>
       <p className="text-warm-700 mb-6">{subtitle}</p>
@@ -400,9 +463,7 @@ function KeyPill({ icon, name, blurb }: { icon: React.ReactNode; name: string; b
   return (
     <div className="inline-flex items-center gap-2 mb-5 rounded-full bg-warm-100/80 border border-warm-200 px-3 py-1.5 text-warm-700">
       <span className="text-warm-700">{icon}</span>
-      <span className="text-[11px] uppercase tracking-[0.18em] font-medium text-warm-700">
-        {name}
-      </span>
+      <span className="text-[11px] uppercase tracking-[0.18em] font-medium text-warm-700">{name}</span>
       <span className="text-[11px] text-warm-700/70 hidden sm:inline">· {blurb}</span>
     </div>
   );
@@ -411,10 +472,10 @@ function KeyPill({ icon, name, blurb }: { icon: React.ReactNode; name: string; b
 /* Completion dashboard --------------------------------------------- */
 
 function Completion({ data }: { data: CompletionData }) {
-  const { streak, recentGratitudes, affirmation, name, quote, action, evidence } = data;
+  const { streak, recentGratitudes, affirmation, name, quote, action } = data;
   const firstTime = streak <= 1;
   return (
-    <div className="space-y-5 fadein">
+    <div className="space-y-5">
       {/* Hero */}
       <div className="bg-white/70 backdrop-blur rounded-2xl p-10 text-center shadow-sm">
         <Sun aria-hidden className="w-10 h-10 mx-auto mb-4 text-warm-500" strokeWidth={1.5} />
@@ -491,16 +552,6 @@ function Completion({ data }: { data: CompletionData }) {
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {/* Evidence */}
-      {evidence?.text && (
-        <div className="rounded-2xl px-5 py-4 border border-warm-200 bg-warm-50/60">
-          <p className="text-xs text-warm-700 leading-relaxed">
-            <span className="font-medium text-warm-900">Why this works:</span> {evidence.text}
-            <span className="text-warm-700/70"> — {evidence.source}</span>
-          </p>
         </div>
       )}
 
