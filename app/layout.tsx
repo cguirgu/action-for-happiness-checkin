@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { Fraunces, Inter } from 'next/font/google';
+import { Lora, Inter } from 'next/font/google';
 import { timeOfDay } from '@/lib/mail';
 import './globals.css';
 
-const fraunces = Fraunces({
+const lora = Lora({
   subsets: ['latin'],
   variable: '--font-serif',
   weight: ['400', '500', '600'],
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const tod = timeOfDay();
   return (
-    <html lang="en" className={`${fraunces.variable} ${inter.variable}`} data-time={tod}>
+    <html lang="en" className={`${lora.variable} ${inter.variable}`} data-time={tod}>
       <body>{children}</body>
     </html>
   );
